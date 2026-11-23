@@ -1,0 +1,14 @@
+# build output
+.gradle/
+.kotlin/
+build/
+app/build/
+dist/
+
+# machine-specific
+local.properties
+
+# signing key and its passwords: never commit these
+*.keystore
+*.jks
+keystore.properties
