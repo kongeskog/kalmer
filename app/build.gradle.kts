@@ -14,8 +14,8 @@ android {
         applicationId = "com.kongeskog.kalmer"
         minSdk = 31
         targetSdk = 31 // the Kompakt runs Android 12
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
     }
     // The release key stays out of the repository: its location and passwords come from keystore.properties
     // (see keystore.properties.example). Without that file, release builds are signed with the debug key.

@@ -189,10 +189,11 @@ private fun rememberMinute(resumed: Boolean) = produceState(System.currentTimeMi
 }
 
 /**
- * One of Kalm's wallpapers, drawn at screen size. An empty name is the plain white "none".
+ * One of the wallpapers, drawn at screen size. An empty name is the plain white "none".
  *
- * Kalmer ships no artwork. The wallpapers are read from the Kalm launcher installed on the phone, and with
- * [offline] set a night version is used instead if the user has put one in Kalmer's files (see [nightFile]).
+ * The wallpapers are bundled in assets/wallpapers. With [offline] set, a night version is used instead where
+ * there is one: a file the user has supplied (see [nightFile]) or, failing that, one bundled in
+ * assets/wallpapers_night.
  */
 @Composable
 fun Wallpaper(name: String, modifier: Modifier = Modifier, offline: Boolean = false) {
@@ -211,20 +212,30 @@ fun Wallpaper(name: String, modifier: Modifier = Modifier, offline: Boolean = fa
             } catch (e: Exception) {
                 null
             }
-            val night = if (offline) nightFile(context, file) else null
-            when {
-                night == null -> null
-                night.extension == "svg" -> svg { night.inputStream() }
-                else -> android.graphics.BitmapFactory.decodeFile(night.path)
-            } ?: svg { context.createPackageContext(KALM, 0).assets.open("wallpapers/$file.svg") }
+            fun png(open: () -> java.io.InputStream) = try {
+                open().use { android.graphics.BitmapFactory.decodeStream(it) }
+            } catch (e: Exception) {
+                null
+            }
+            val night = if (!offline) null else {
+                val own = nightFile(context, file)
+                when {
+                    own == null -> svg { context.assets.open("wallpapers_night/$file.svg") }
+                        ?: png { context.assets.open("wallpapers_night/$file.png") }
+                    own.extension == "svg" -> svg { own.inputStream() }
+                    else -> png { own.inputStream() }
+                }
+            }
+            night ?: svg { context.assets.open("wallpapers/$file.svg") }
         }
     }
     if (bitmap != null) Image(bitmap.asImageBitmap(), null, modifier, contentScale = ContentScale.FillBounds)
 }
 
 /**
- * A user-supplied night version of a wallpaper: an SVG or PNG named like the original, in the "night" folder of
- * Kalmer's files on shared storage (Android/data/com.kongeskog.kalmer/files/night).
+ * A user-supplied night version of a wallpaper, which takes the place of any bundled one: an SVG or PNG named
+ * like the original, in the "night" folder of Kalmer's files on shared storage
+ * (Android/data/com.kongeskog.kalmer/files/night).
  */
 fun nightFile(context: Context, file: String): java.io.File? {
     val dir = java.io.File(context.getExternalFilesDir(null) ?: return null, "night")

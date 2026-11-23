@@ -8,7 +8,7 @@ Screenshot the same screen in both launchers and compare the edges of each eleme
 
 `uiautomator dump` gives exact pixel bounds for every text and tap target, in both Kalm and Kalmer. Match the bounds first, then compare screenshots. All sizes in the code are those pixel values, written as `N.px` (see `Ui.kt`).
 
-Kalm's APK is at `/system/system_ext/priv-app/MuditaLauncher2/MuditaLauncher2.apk`; `aapt2 dump` on a pulled copy gives its strings and resource names. None of Mudita's artwork is in this repository: Kalmer reads the wallpapers at runtime from the Kalm launcher installed on the phone (`createPackageContext("com.mudita.launcher2").assets`, `wallpapers/<name>.svg`). The Lato fonts are bundled under the SIL Open Font License (`LICENSE-Lato.txt`).
+Kalm's APK is at `/system/system_ext/priv-app/MuditaLauncher2/MuditaLauncher2.apk`; `aapt2 dump` on a pulled copy gives its strings and resource names. The twelve wallpapers in `app/src/main/assets/wallpapers` are Kalm's own, in the "text left" layout, bundled at the owner's decision so that Kalmer doesn't depend on Kalm being installed. The Lato fonts are bundled under the SIL Open Font License (`LICENSE-Lato.txt`).
 
 ## Measurements (px on the 480x800 screen)
 
@@ -67,7 +67,7 @@ Not built yet: the other five home styles (and their wallpaper variants), font s
 
 ## Offline+ wallpaper
 
-While the Kompakt's Offline+ hardware switch is on, the home screen shows the night version of the current wallpaper, if one has been supplied: a file with the original's name (`L_Text_Left.svg` or `.png`) in `Android/data/com.kongeskog.kalmer/files/night/` on the phone's storage. Otherwise the ordinary wallpaper stays. Appearance > Offline+ Wallpaper turns this off. Kalmer creates the folder itself on first start; if it is created over adb first, the app can't read it.
+While the Kompakt's Offline+ hardware switch is on, the home screen shows the night version of the current wallpaper where there is one. Bundled night versions are in `app/src/main/assets/wallpapers_night` (J and L so far), named like the original as `.svg` or `.png`. A file of the same name in `Android/data/com.kongeskog.kalmer/files/night/` on the phone takes its place. Otherwise the ordinary wallpaper stays. Appearance > Offline+ Wallpaper turns this off. Kalmer creates that folder itself on first start; if it is created over adb first, the app can't read it.
 
 MuditaOS reports the switch with the broadcasts `android.intent.action.ACTION_HWSWITCH_LOCKED` and `..._UNLOCKED` (visible in logcat when the switch is flipped) and the global setting `HWSwitch_lock`. To test without touching the switch, send the broadcast to Kalmer only: `adb.exe shell am broadcast -a android.intent.action.ACTION_HWSWITCH_LOCKED -p com.kongeskog.kalmer`.
 

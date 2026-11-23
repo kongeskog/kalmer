@@ -27,7 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
-/** Mudita's Kalm launcher, whose wallpapers Kalmer displays. */
+/** Mudita's Kalm launcher. Kalmer doesn't use it; it is only left out of the app list, as Kalm leaves itself out. */
 const val KALM = "com.mudita.launcher2"
 const val DIAL = "com.mudita.dial"
 const val SMS = "com.mudita.messages"

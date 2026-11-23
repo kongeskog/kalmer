@@ -39,7 +39,7 @@ Kalm, the launcher in MuditaOS K 2.0, is a calm, well-drawn home screen. Kalmer 
 
 ## Requirements
 
-- A Mudita Kompakt running MuditaOS K 2.0 or later. Kalmer shows the wallpapers that belong to the Kalm launcher installed on the phone; it contains no artwork of its own. Without Kalm the home screen is plain white.
+- A Mudita Kompakt. Kalmer was built and tested on MuditaOS K 2.0. It doesn't need the Kalm launcher: the wallpapers are included.
 - A computer with `adb` and USB debugging switched on, for installing and for the one-time setup below.
 
 Everything is sized for the Kompakt's 480 x 800 screen. It isn't meant for other phones.
@@ -49,7 +49,7 @@ Everything is sized for the Kompakt's 480 x 800 screen. It isn't meant for other
 Download the APK from the [latest release](../../releases/latest), then:
 
 ```bash
-adb install Kalmer-0.1.0.apk
+adb install Kalmer-0.1.1.apk
 ```
 
 Give Kalmer the access it needs. Each line is optional and switches on the feature named beside it:
@@ -70,14 +70,16 @@ Kalm silences notifications for as long as it has notification access, even when
 
 ## Night wallpapers for Offline+
 
-Kalmer doesn't come with night versions. To add one, make an image with the same name as the wallpaper it replaces and copy it to the phone:
+Two wallpapers come with a night version: the woodland animals (J), who fall asleep, and the mountain landscape (L), where the sun becomes a moon. The others stay as they are when Offline+ is on.
+
+To add or replace one, make an image with the same name as the wallpaper and copy it to the phone:
 
 ```bash
-adb push L_Text_Left.png /sdcard/Android/data/com.kongeskog.kalmer/files/night/
+adb push K_Text_Left.png /sdcard/Android/data/com.kongeskog.kalmer/files/night/
 ```
 
 - Use the original's name: the design letter, then `_Text_Left`, as `.png` or `.svg`. The letters run A to M with no G, in the order of the wallpaper picker after "none".
-- PNG: 480 x 800, pure black on white. SVG: a 356 x 593 canvas, like the originals.
+- PNG: 480 x 800, pure black on white. SVG: a 356 x 593 canvas, like the originals in `app/src/main/assets/wallpapers`.
 - Start Kalmer once before copying, so that it creates the folder itself.
 
 The setting is under **Appearance > Offline+ Wallpaper**.
@@ -100,4 +102,4 @@ Needs JDK 17 and the Android SDK (platform 35, build-tools 34). Without a `keyst
 
 - Built with Mudita's [Mindful Design](https://github.com/mudita/MMD) library (Apache-2.0) and [AndroidSVG](https://bigbadaboom.github.io/androidsvg/) (Apache-2.0).
 - The Lato typeface is by Łukasz Dziedzic, under the SIL Open Font License; see `LICENSE-Lato.txt`.
-- Kalm, Mudita and Mudita Kompakt are Mudita's. The wallpapers in the screenshots are Kalm's, shown as they appear on the phone.
+- Kalm, Mudita and Mudita Kompakt are Mudita's. The wallpapers in `app/src/main/assets/wallpapers` are Mudita's artwork from the Kalm launcher, included so that Kalmer works on its own; the two night versions are adapted from them. They are not covered by any licence of this project and remain Mudita's. If you are from Mudita and would like them removed, open an issue.
