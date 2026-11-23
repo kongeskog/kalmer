@@ -1,4 +1,5 @@
 <img src="docs/icon.svg" width="96" alt="Kalmer icon" align="right">
+<br/>
 
 # Kalmer
 
