@@ -25,14 +25,25 @@ Kalm, the launcher in MuditaOS K 2.0, is a calm, well-drawn home screen. Kalmer 
 - **A wallpaper for Offline+.** When the Offline+ switch is on, the wallpaper can change to a night version of itself.
 
 <p>
-  <img src="docs/offline-switch.gif" width="240" alt="The wallpaper changing as the Offline+ switch is turned on">
+  <img src="docs/offline-animals.gif" width="240" alt="The woodland animals falling asleep as the Offline+ switch is turned on">
+  <img src="docs/offline-trees.gif" width="240" alt="The sun becoming a moon as the Offline+ switch is turned on">
 </p>
 
 ## More screenshots
 
 <p>
+  <img src="docs/screenshots/home-items.png" width="200" alt="Home screen items">
+  <img src="docs/screenshots/home-item-choice.png" width="200" alt="Choosing what a home item opens">
+  <img src="docs/screenshots/tap-actions.png" width="200" alt="Tap actions for the time and date">
+  <img src="docs/screenshots/widgets.png" width="200" alt="Home screen widgets">
+</p>
+<p>
+  <img src="docs/screenshots/notification-sounds.png" width="200" alt="Notification sounds per app">
+  <img src="docs/screenshots/notification-badges.png" width="200" alt="Notification badge styles">
   <img src="docs/screenshots/app-menu.png" width="200" alt="Long-press menu for an app">
   <img src="docs/screenshots/gestures.png" width="200" alt="Home screen gestures">
+</p>
+<p>
   <img src="docs/screenshots/notifications.png" width="200" alt="Notification settings">
   <img src="docs/screenshots/wallpaper.png" width="200" alt="Wallpaper picker">
 </p>
