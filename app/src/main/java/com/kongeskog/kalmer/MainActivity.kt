@@ -21,6 +21,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
@@ -156,6 +157,8 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         resumed = true
         resumeCount++
+        window.decorView.removeCallbacks(showClock)
+        Inbox.clearSeen(this)
         Counts.refreshPhone(this)
         Weather.refresh(this)
         OfflinePlus.read(this)
@@ -167,9 +170,12 @@ class MainActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         resumed = false
-        // Give the clock back before another app is on screen.
-        StatusClock.hide(this, false)
+        // Give the clock back once another app is on screen. Pressing Home on the home screen also pauses and
+        // resumes the launcher at once, so wait a moment: onResume cancels it, and the clock doesn't flash.
+        window.decorView.postDelayed(showClock, 200)
     }
+
+    private val showClock = Runnable { StatusClock.hide(this, false) }
 
     override fun onDestroy() {
         contentResolver.unregisterContentObserver(phoneObserver)
@@ -307,7 +313,9 @@ private fun HomeScreen(resumed: Boolean, open: (String) -> Unit) {
             Icon(30, draw = weatherIcon(Weather.icon))
         }
 
-        if (s.music && Media.active && !Media.dismissed) MusicPlayer(open)
+        if (s.music && Media.active && !Media.dismissed) {
+            if (s.musicStyle == MUSIC_KALM) MusicPlayer(open) else MinimalPlayer(open)
+        }
 
         Column(Modifier.align(Alignment.BottomStart).padding(start = 48.px, bottom = 36.px)) {
             val slots = SLOTS.map { s.target(it) }.filter { it.isNotEmpty() }
@@ -330,6 +338,32 @@ private fun HomeItem(label: String, count: Int, onClick: () -> Unit) {
     }
 }
 
+/**
+ * The minimal player: a play/pause toggle and the track title on the bare wallpaper, under the weather.
+ * Measured on all twelve wallpapers, the art stays right of x=283 above y=330 (L's tree is the tightest)
+ * and spans the width from y=336, so everything drawn here keeps to x 48–296, y 278–326.
+ */
+@Composable
+private fun MinimalPlayer(open: (String) -> Unit) {
+    Row(Modifier.offset(40.px, 270.px).height(64.px), verticalAlignment = Alignment.CenterVertically) {
+        // The 36px icon lines up with the clock at x=48; the 52x64px cell is the tap target.
+        // Play and Pause are drawn on a 48px box, so they're scaled down to fit.
+        val toggle = if (Media.playing) Pause else Play
+        Box(Modifier.size(52.px, 64.px).tap {
+            val controls = Media.controller?.transportControls
+            if (Media.playing) controls?.pause() else controls?.play()
+        }, contentAlignment = Alignment.Center) { Icon(36) { scale(36f / 48f, Offset.Zero) { toggle() } } }
+        Spacer(Modifier.width(8.px))
+        BasicText(
+            Media.title.ifBlank { Media.artist }.ifBlank { "Music" },
+            Modifier.width(148.px).height(64.px).wrapContentHeight().tap { Media.controller?.packageName?.let(open) },
+            style = text(24), maxLines = 1, overflow = TextOverflow.Ellipsis,
+        )
+        // Like the ✕ on Kalm's bar: pauses and hides the player until music next starts playing. The icon ends at x=288.
+        Box(Modifier.size(52.px, 64.px).tap { Media.close() }, contentAlignment = Alignment.Center) { Icon(28, draw = Cross) }
+    }
+}
+
 /** Kalm's player bar: open the player, previous, play or pause, next, and dismiss. */
 @Composable
 private fun MusicPlayer(open: (String) -> Unit) {
@@ -343,6 +377,6 @@ private fun MusicPlayer(open: (String) -> Unit) {
         button(117, Previous) { controls?.skipToPrevious() }
         button(203, if (Media.playing) Pause else Play) { if (Media.playing) controls?.pause() else controls?.play() }
         button(289, Next) { controls?.skipToNext() }
-        button(377, Cross) { Media.dismissed = true }
+        button(377, Cross) { Media.close() }
     }
 }

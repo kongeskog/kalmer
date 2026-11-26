@@ -51,6 +51,9 @@ private val DEFAULT_TARGETS = mapOf(
 )
 
 /** Everything the user can change. The defaults are Kalm's behaviour. */
+const val MUSIC_MINIMAL = 0
+const val MUSIC_KALM = 1
+
 data class Settings(
     val targets: Map<String, String> = DEFAULT_TARGETS,
     /** Apps switched off in Manage Notifications: no inbox entries and no count dots anywhere. */
@@ -73,6 +76,8 @@ data class Settings(
     val bell: Boolean = true,
     val scrollBar: Boolean = true,
     val music: Boolean = true,
+    /** [MUSIC_MINIMAL] (title and play/pause on the wallpaper) or [MUSIC_KALM] (Kalm's boxed bar). */
+    val musicStyle: Int = MUSIC_MINIMAL,
     /** Search behaviour, as in Kalm: both off by default. */
     val autoKeyboard: Boolean = false,
     val autoOpenApp: Boolean = false,
@@ -114,6 +119,7 @@ object Store {
             bell = prefs.getBoolean("bell", d.bell),
             scrollBar = prefs.getBoolean("scrollBar", d.scrollBar),
             music = prefs.getBoolean("music", d.music),
+            musicStyle = prefs.getInt("musicStyle", d.musicStyle),
             autoKeyboard = prefs.getBoolean("autoKeyboard", d.autoKeyboard),
             autoOpenApp = prefs.getBoolean("autoOpenApp", d.autoOpenApp),
             quickMostUsed = prefs.getBoolean("quickMostUsed", d.quickMostUsed),
@@ -139,6 +145,7 @@ object Store {
             .putBoolean("bell", s.bell)
             .putBoolean("scrollBar", s.scrollBar)
             .putBoolean("music", s.music)
+            .putInt("musicStyle", s.musicStyle)
             .putBoolean("autoKeyboard", s.autoKeyboard)
             .putBoolean("autoOpenApp", s.autoOpenApp)
             .putBoolean("quickMostUsed", s.quickMostUsed)
@@ -349,6 +356,33 @@ object Inbox {
     }
 
     fun clear(pkg: String) { if (entries.any { it.pkg == pkg }) set(entries.filter { it.pkg != pkg }) }
+
+    /** Drops the entry for a notification that was read: its app took it down, or it was tapped or swiped away. */
+    fun remove(pkg: String, title: String, text: String) {
+        if (entries.any { it.pkg == pkg && it.title == title && it.text == text })
+            set(entries.filterNot { it.pkg == pkg && it.title == title && it.text == text })
+    }
+
+    /**
+     * Drops entries for apps opened since they arrived, however they were opened (from a notification, recents or
+     * another launcher). Needs usage access, granted over adb; without it nothing is dropped.
+     */
+    fun clearSeen(context: Context) {
+        val now = System.currentTimeMillis()
+        val since = prefs.getLong("seenCheck", now - 86_400_000L)
+        val opened = mutableMapOf<String, Long>()
+        try {
+            val events = context.getSystemService(android.app.usage.UsageStatsManager::class.java).queryEvents(since, now)
+            val e = android.app.usage.UsageEvents.Event()
+            while (events.getNextEvent(e)) {
+                if (e.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED && e.packageName != context.packageName)
+                    opened[e.packageName] = maxOf(opened[e.packageName] ?: 0, e.timeStamp)
+            }
+        } catch (e: Exception) { return }
+        prefs.edit().putLong("seenCheck", now).apply()
+        val next = entries.filter { entry -> opened[entry.pkg]?.let { entry.time > it } ?: true }
+        if (next.size != entries.size) set(next)
+    }
     fun clearAll() = set(emptyList())
 
     /** Entries the user wants to see, newest first. */
@@ -381,6 +415,10 @@ object Counts {
         unreadSms = if (context.checkSelfPermission(Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED)
             count(context, Uri.parse("content://sms/inbox"), "read=0")
         else null
+        // The databases say what is still unread, so entries for calls and messages already seen are dropped,
+        // however they were seen.
+        if (missedCalls == 0) Inbox.clear(DIAL)
+        if (unreadSms == 0) Inbox.clear(SMS)
     }
 
     private fun count(context: Context, uri: Uri, where: String): Int? = try {
@@ -486,6 +524,12 @@ object Media {
         read()
     }
 
+    /** The player's ✕, as in Kalm: pause the music and hide the player until it plays again. */
+    fun close() {
+        controller?.transportControls?.pause()
+        dismissed = true
+    }
+
     private fun read() {
         val c = controller
         val state = c?.playbackState?.state
@@ -523,6 +567,21 @@ class NotifListener : NotificationListenerService() {
         if (sbn == null) return
         record(sbn)
         if (shouldSilence(sbn)) try { cancelNotification(sbn.key) } catch (e: Exception) {}
+    }
+
+    override fun onNotificationRemoved(sbn: StatusBarNotification?, rankingMap: RankingMap?, reason: Int) {
+        if (sbn == null) return
+        when (reason) {
+            // Tapping a notification opens its app, which counts as seeing all of that app's entries.
+            REASON_CLICK -> Inbox.clear(sbn.packageName)
+            // The app took it down (usually because it was read there) or the user swiped it away.
+            // Cancels by Kalmer or Kalm (REASON_LISTENER_CANCEL) only silence it, so the entry stays.
+            REASON_APP_CANCEL, REASON_APP_CANCEL_ALL, REASON_CANCEL, REASON_CANCEL_ALL, REASON_GROUP_SUMMARY_CANCELED -> {
+                val n = sbn.notification
+                Inbox.remove(sbn.packageName, n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: "",
+                    n.extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: "")
+            }
+        }
     }
 
     /** Whether this is the kind of notification the inbox keeps: something that would alert, not a status line. */
