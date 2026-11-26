@@ -60,7 +60,7 @@ Everything is sized for the Kompakt's 480 x 800 screen. It isn't meant for other
 Download the APK from the [latest release](../../releases/latest), then:
 
 ```bash
-adb install Kalmer-0.1.1.apk
+adb install Kalmer-0.1.4.apk
 ```
 
 Give Kalmer the access it needs. Each line is optional and switches on the feature named beside it:
