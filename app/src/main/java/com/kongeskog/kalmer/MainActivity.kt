@@ -341,18 +341,23 @@ private fun HomeItem(label: String, count: Int, onClick: () -> Unit) {
 /**
  * The minimal player: a play/pause toggle and the track title on the bare wallpaper, under the weather.
  * Measured on all twelve wallpapers, the art stays right of x=283 above y=330 (L's tree is the tightest)
- * and spans the width from y=336, so everything drawn here keeps to x 48–296, y 278–326.
+ * and spans the width from y=336, so everything drawn here keeps to x 48–296, y 268–316. Its icon sits 20px
+ * below the weather: matching the 14px between the date and the weather looks cramped, as the icon is taller.
  */
 @Composable
 private fun MinimalPlayer(open: (String) -> Unit) {
-    Row(Modifier.offset(40.px, 270.px).height(64.px), verticalAlignment = Alignment.CenterVertically) {
-        // The 36px icon lines up with the clock at x=48; the 52x64px cell is the tap target.
+    Row(Modifier.offset(40.px, 260.px).height(64.px), verticalAlignment = Alignment.CenterVertically) {
+        // The 52x64px cell is the tap target.
         // Play and Pause are drawn on a 48px box, so they're scaled down to fit.
         val toggle = if (Media.playing) Pause else Play
         Box(Modifier.size(52.px, 64.px).tap {
             val controls = Media.controller?.transportControls
             if (Media.playing) controls?.pause() else controls?.play()
-        }, contentAlignment = Alignment.Center) { Icon(36) { scale(36f / 48f, Offset.Zero) { toggle() } } }
+        }, contentAlignment = Alignment.Center) {
+            // Both icons leave 9px of blank space on their left. Shift 4px so the ink starts at x=52: a solid shape lined up
+            // exactly with the text (x=49) looks too far left.
+            Box(Modifier.offset((-4).px, 0.px)) { Icon(36) { scale(36f / 48f, Offset.Zero) { toggle() } } }
+        }
         Spacer(Modifier.width(8.px))
         BasicText(
             Media.title.ifBlank { Media.artist }.ifBlank { "Music" },
