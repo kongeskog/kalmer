@@ -44,7 +44,7 @@ Kalm's APK is at `/system/system_ext/priv-app/MuditaLauncher2/MuditaLauncher2.ap
 
 **Radio pickers**: section headings ("USE TO OPEN") are 24px Lato Black capitals in a 92px band, then a dotted divider.
 
-**Music bar**: white box at (17, 268), 446x103, 4px border, 24px corners. Five 75px buttons at y=283, x=29, 117, 203, 289, 377: open player, previous, play/pause, next, dismiss.
+**Music bar**: white box at (17, 268), 446x103, 4px border, 24px corners. Five 75px buttons at y=283, x=29, 117, 203, 289, 377: open player, previous, play/pause, next, dismiss. Dismiss also pauses the music, as Kalm's does; the bar returns when music next plays.
 
 **Weather**: at (48, 212), 64 high, 32px temperature then a 30px conditions icon. Data is `content://com.mudita.weather/widget_weather` (columns `temperature`, `is_error`, `weather_icon_info` as an OpenWeatherMap code), readable with the normal-level permission `com.mudita.weather.PERMISSION_READ_WEATHER_DATA`.
 
@@ -57,7 +57,9 @@ Added:
 - The weather line keeps its last good reading. Kalm's disappears whenever the Weather app reports an error or has no data.
 - Interaction Settings > Tap Actions for the time and date.
 - A home item shows its app's count dot, the same count the app list shows. One list, Notification Settings > Manage Notifications, switches an app off everywhere: inbox, app list and home screen. (A separate "Home Screen Notifications" list was tried and removed as confusing.)
+- Inbox entries go once they've been seen, unlike Kalm's, which stay until cleared. An app's entries go when one of its notifications is tapped or the app is opened by any route. An entry also goes when its app takes the notification down or it is swiped away. Opening an app by another route is detected through usage access: `adb.exe shell appops set com.kongeskog.kalmer GET_USAGE_STATS allow`. Notifications Kalmer cancels to keep the phone quiet stay in the inbox.
 - A short vibration on the long-press gesture.
+- A minimal music player, the default (Home Screen Widgets > Player Style: Minimal / Kalm). It has no box. A 36px play/pause icon at (48, 284) sits in a 52×64px tap cell. Next comes the track title (artist, or "Music", if there is none) in 24px Lato from x=100, 148px wide with an ellipsis. Last is a 28px ✕ at x=260–288. As on Kalm's bar, it pauses the music and hides the player until music next starts playing. Measured across all twelve wallpapers, the artwork stays right of x=283 above y=330 (wallpaper L's tree is the tightest) and spans the full width from y=336. So the player keeps inside x 48–296, y 278–326. Tapping the title opens the media app. There's no previous or next.
 
 Different:
 - Pinned apps are listed once, first, with a dotted divider under the last one. Kalm marks them with a pin icon and can list them twice; Kalmer does neither.

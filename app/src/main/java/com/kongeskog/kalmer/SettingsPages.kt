@@ -61,6 +61,11 @@ fun SettingsPage(page: Page, resumeCount: Long, push: (Page) -> Unit, pop: () ->
         Page.Widgets -> Screen("Home Screen Widgets", pop) {
             SwitchRow("Weather", checked = s.weather) { on -> Store.update { it.copy(weather = on) } }
             SwitchRow("Music Player", "Appears when you play music", s.music) { on -> Store.update { it.copy(music = on) } }
+            if (s.music) {
+                SectionHeader("Player Style")
+                RadioRow("Minimal", s.musicStyle == MUSIC_MINIMAL) { Store.update { it.copy(musicStyle = MUSIC_MINIMAL) } }
+                RadioRow("Kalm", s.musicStyle == MUSIC_KALM) { Store.update { it.copy(musicStyle = MUSIC_KALM) } }
+            }
         }
         Page.AppListView -> Screen("App List View", pop) {
             SwitchRow("Search Bar", checked = s.searchBar) { on -> Store.update { it.copy(searchBar = on) } }
