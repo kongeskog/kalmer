@@ -25,6 +25,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
+/** The tiles' icon size in real pixels: 108, as every size here is a pixel measurement on the Kompakt's screen. */
+const val TILE_ICON_PX = 108
+
 /**
  * App icons for the tiles layout, drawn as each app supplies them, with no frame or recolouring:
  * what Mudita's first launcher shows.
@@ -51,9 +54,27 @@ object AppIcons {
      * With [glyph], only the middle two thirds of the icon are kept. Mudita's own icons are a line drawing
      * inside a rounded square, and this leaves the drawing without its square, as Kalm shows it on a home button.
      */
-    suspend fun load(context: Context, pkg: String, size: Int, glyph: Boolean = false): ImageBitmap? = withContext(Dispatchers.Default) {
+    suspend fun load(context: Context, pkg: String, size: Int, glyph: Boolean = false): ImageBitmap? =
+        withContext(Dispatchers.Default) { draw(context, pkg, size, glyph) }
+
+    /**
+     * Draws the tiles' icons ahead of time, in the background, so the apps page opens with them in place
+     * instead of filling in. Called at start and whenever the installed apps change.
+     */
+    fun preload(context: Context, pkgs: List<String>) {
+        val size = TILE_ICON_PX
+        val started = generation
+        Thread {
+            for (pkg in pkgs) {
+                if (generation != started) return@Thread // the apps changed again; a newer run has taken over
+                draw(context, pkg, size, false)
+            }
+        }.apply { priority = Thread.MIN_PRIORITY }.start()
+    }
+
+    private fun draw(context: Context, pkg: String, size: Int, glyph: Boolean): ImageBitmap? {
         val key = key(pkg, size, glyph)
-        cache[key] ?: try {
+        return cache[key] ?: try {
             val icon = context.packageManager.getApplicationIcon(pkg)
             Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).also {
                 val full = if (glyph) size * 3 / 2 else size

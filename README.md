@@ -12,6 +12,11 @@ Kalmer is an independent project. It is not made by, affiliated with or endorsed
   <img src="docs/screenshots/apps.png" width="240" alt="App list">
   <img src="docs/screenshots/settings.png" width="240" alt="Settings">
 </p>
+<p>
+  <img src="docs/screenshots/tiles.png" width="240" alt="The apps page as icon tiles">
+  <img src="docs/screenshots/tiles-reorder.png" width="240" alt="Reordering tiles: the chosen tile is ringed, and tapping another swaps them">
+  <img src="docs/screenshots/tiles-setting.png" width="240" alt="Choosing between the list and the tiles">
+</p>
 
 ## Why
 
@@ -62,7 +67,7 @@ Everything is sized for the Kompakt's 480 x 800 screen. It isn't meant for other
 Download the APK from the [latest release](../../releases/latest), then:
 
 ```bash
-adb install Kalmer-0.1.4.apk
+adb install Kalmer-0.2.0.apk
 ```
 
 Give Kalmer the access it needs. Each line is optional and switches on the feature named beside it:
@@ -99,7 +104,7 @@ The setting is under **Appearance > Offline+ Wallpaper**.
 
 ## What isn't here yet
 
-Kalm has more than Kalmer does. Missing so far: the other five home styles (Kalmer has "text, left"), folders, font size and font type, and the status bar and date-and-time widget switches.
+Kalm has more than Kalmer does. Missing so far: folders, font size and font type, and the status bar and date-and-time widget switches.
 
 ## Building
 

@@ -227,6 +227,7 @@ object Apps {
             .filter { it.pkg != context.packageName && !hiddenBySystem(it.pkg) }
             .distinctBy { it.pkg }
         AppIcons.clear()
+        AppIcons.preload(context.applicationContext, all.map { it.pkg })
     }
 
     /** Stock Android apps that Mudita keeps installed but leaves out of its app list. */
