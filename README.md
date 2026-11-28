@@ -83,7 +83,7 @@ Kalm silences notifications for as long as it has notification access, even when
 
 ## Night wallpapers for Offline+
 
-Two wallpapers come with a night version: the woodland animals (J), who fall asleep, and the mountain landscape (L), where the sun becomes a moon. The others stay as they are when Offline+ is on, and so do these two in any home style but text on the left.
+Two wallpapers come with a night version: the woodland animals (J), who fall asleep, and the mountain landscape (L), where the sun becomes a moon. They do so in every home style. The others stay as they are when Offline+ is on.
 
 To add or replace one, make an image with the same name as the wallpaper and copy it to the phone:
 
