@@ -31,11 +31,18 @@ import androidx.compose.runtime.setValue
 const val KALM = "com.mudita.launcher2"
 const val DIAL = "com.mudita.dial"
 const val SMS = "com.mudita.messages"
+const val CAMERA = "com.mudita.camera"
 
 // Things a home item, tap or gesture can open that aren't apps.
 const val OPEN_APPS = "@apps"
 const val OPEN_INBOX = "@inbox"
 const val OPEN_SETTINGS = "@settings"
+
+const val HOME_STYLES = 6
+/** Where a home style puts the clock and the text items: 0 left, 1 centre, 2 right. */
+fun styleSide(style: Int) = style % 3
+/** Whether a home style shows the home items as four buttons instead of a list of names. */
+fun styleButtons(style: Int) = style >= 3
 
 /** Kalm's wallpapers in its order; position 1 of 13 is "none". */
 val WALLPAPERS = listOf("", "A", "B", "C", "D", "E", "F", "H", "I", "J", "K", "L", "M")
@@ -43,16 +50,30 @@ val WALLPAPERS = listOf("", "A", "B", "C", "D", "E", "F", "H", "I", "J", "K", "L
 // Four home items, as in Kalm: its wallpapers leave room for exactly four.
 val SLOTS = listOf("slot0", "slot1", "slot2", "slot3")
 
-/** What each home item, tap and gesture opens: "" for nothing, an OPEN_ constant, or a package name. */
+/**
+ * What each home item, tap and gesture opens: "" for nothing, an OPEN_ constant, or a package name.
+ * "tileUp" and "tileDown" are the swipes on the tiles page, where left and right turn the pages.
+ */
 private val DEFAULT_TARGETS = mapOf(
     "slot0" to DIAL, "slot1" to SMS, "slot2" to "", "slot3" to OPEN_APPS,
     "clock" to "com.mudita.alarm", "date" to "com.mudita.calendar",
-    "up" to OPEN_APPS, "down" to "", "left" to "", "right" to "", "long" to OPEN_SETTINGS,
+    "up" to CAMERA, "down" to OPEN_INBOX, "left" to OPEN_APPS, "right" to "", "long" to OPEN_SETTINGS,
+    "tileUp" to "", "tileDown" to OPEN_INBOX,
 )
 
 /** Everything the user can change. The defaults are Kalm's behaviour. */
 const val MUSIC_MINIMAL = 0
 const val MUSIC_KALM = 1
+
+// The apps page: Kalm's scrolling list, or pages of icon tiles.
+const val LAYOUT_LIST = 0
+const val LAYOUT_TILES = 1
+
+const val SORT_AZ = 0
+const val SORT_RECENT = 1
+const val SORT_USED = 2
+/** The order the user has arranged by hand, in [Settings.tileOrder]. */
+const val SORT_CUSTOM = 3
 
 data class Settings(
     val targets: Map<String, String> = DEFAULT_TARGETS,
@@ -67,6 +88,11 @@ data class Settings(
     /** 0 none, 1 dots, 2 dots with numbers. */
     val badges: Int = 2,
     val wallpaper: String = "L",
+    /**
+     * Kalm's six home styles, in its order: text on the left, in the centre, on the right, then buttons with
+     * the clock on the left, in the centre, on the right. Each has its own cut of every wallpaper.
+     */
+    val homeStyle: Int = 0,
     /** Show a wallpaper's night version while the Offline+ switch is on, where it has one. */
     val offlineWallpaper: Boolean = true,
     val pinned: Set<String> = emptySet(),
@@ -84,6 +110,14 @@ data class Settings(
     /** The quick access area at the top of the app list shows the most used apps instead of the pinned ones. */
     val quickMostUsed: Boolean = false,
     val weather: Boolean = true,
+    /** [LAYOUT_LIST] or [LAYOUT_TILES]. Each layout has its own settings, so switching between them loses nothing. */
+    val appsLayout: Int = LAYOUT_LIST,
+    // The tiles layout. It shares hidden apps and names with the list and leaves the pins alone.
+    val tileNames: Boolean = true,
+    /** [SORT_AZ], [SORT_RECENT], [SORT_USED] or [SORT_CUSTOM]. */
+    val tileSort: Int = SORT_AZ,
+    /** Packages in the order arranged by hand. It is kept while another order is chosen. */
+    val tileOrder: List<String> = emptyList(),
 ) {
     fun target(key: String) = targets[key] ?: ""
 }
@@ -111,6 +145,7 @@ object Store {
             inbox = prefs.getBoolean("inbox", d.inbox),
             badges = prefs.getInt("badges", d.badges),
             wallpaper = prefs.getString("wallpaper", d.wallpaper)!!,
+            homeStyle = prefs.getInt("homeStyle", d.homeStyle).coerceIn(0, HOME_STYLES - 1),
             offlineWallpaper = prefs.getBoolean("offlineWallpaper", d.offlineWallpaper),
             pinned = set("pinned", d.pinned),
             hidden = set("hidden", d.hidden),
@@ -124,6 +159,10 @@ object Store {
             autoOpenApp = prefs.getBoolean("autoOpenApp", d.autoOpenApp),
             quickMostUsed = prefs.getBoolean("quickMostUsed", d.quickMostUsed),
             weather = prefs.getBoolean("weather", d.weather),
+            appsLayout = prefs.getInt("appsLayout", d.appsLayout),
+            tileNames = prefs.getBoolean("tileNames", d.tileNames),
+            tileSort = prefs.getInt("tileSort", d.tileSort),
+            tileOrder = prefs.getString("tileOrder", "")!!.lines().filter { it.isNotEmpty() },
         )
     }
 
@@ -137,6 +176,7 @@ object Store {
             .putBoolean("inbox", s.inbox)
             .putInt("badges", s.badges)
             .putString("wallpaper", s.wallpaper)
+            .putInt("homeStyle", s.homeStyle)
             .putBoolean("offlineWallpaper", s.offlineWallpaper)
             .putStringSet("pinned", s.pinned)
             .putStringSet("hidden", s.hidden)
@@ -150,6 +190,10 @@ object Store {
             .putBoolean("autoOpenApp", s.autoOpenApp)
             .putBoolean("quickMostUsed", s.quickMostUsed)
             .putBoolean("weather", s.weather)
+            .putInt("appsLayout", s.appsLayout)
+            .putBoolean("tileNames", s.tileNames)
+            .putInt("tileSort", s.tileSort)
+            .putString("tileOrder", s.tileOrder.joinToString("\n"))
             .apply()
     }
 
@@ -182,6 +226,7 @@ object Apps {
             .map { AppEntry(it.applicationInfo.packageName, it.label.toString()) }
             .filter { it.pkg != context.packageName && !hiddenBySystem(it.pkg) }
             .distinctBy { it.pkg }
+        AppIcons.clear()
     }
 
     /** Stock Android apps that Mudita keeps installed but leaves out of its app list. */
@@ -219,6 +264,22 @@ object Apps {
     fun visible(): List<AppEntry> {
         val quick = quick()
         return quick + if (Store.settings.quickMostUsed) shown() else shown().filter { it !in quick }
+    }
+
+    /**
+     * The tiles layout: the same apps as the list, hidden ones left out, with no quick access area.
+     * Apps that tie, or were never opened, stay in name order.
+     */
+    fun tiles(): List<AppEntry> = shown().let { apps ->
+        when (Store.settings.tileSort) {
+            SORT_RECENT -> apps.sortedByDescending { Usage.recent[it.pkg] ?: 0L }
+            SORT_USED -> apps.sortedByDescending { Usage.counts[it.pkg] ?: 0 }
+            // Apps installed or unhidden since the order was arranged go at the end.
+            SORT_CUSTOM -> Store.settings.tileOrder.withIndex().associate { it.value to it.index }.let { place ->
+                apps.sortedBy { place[it.pkg] ?: Int.MAX_VALUE }
+            }
+            else -> apps
+        }
     }
 
     /** Search results, as in Kalm: every app whose name contains what was typed, by name. */
@@ -289,13 +350,21 @@ object StatusClock {
  */
 object Usage {
     private lateinit var prefs: SharedPreferences
-    private var counts = mapOf<String, Int>()
+    private lateinit var recentPrefs: SharedPreferences
+    var counts by mutableStateOf(mapOf<String, Int>())
+        private set
+    /** When each app was last opened from here, for the tiles' "most recent" order. */
+    var recent by mutableStateOf(mapOf<String, Long>())
+        private set
     var top by mutableStateOf(emptyList<String>())
         private set
 
     fun init(context: Context) {
         prefs = context.getSharedPreferences("ink_home_usage", Context.MODE_PRIVATE)
         counts = prefs.all.mapNotNull { (k, v) -> (v as? Int)?.let { k to it } }.toMap()
+        // Kept apart from the counts, whose file is cleared and rewritten on every open.
+        recentPrefs = context.getSharedPreferences("ink_home_recent", Context.MODE_PRIVATE)
+        recent = recentPrefs.all.mapNotNull { (k, v) -> (v as? Long)?.let { k to it } }.toMap()
         rank()
     }
 
@@ -304,6 +373,9 @@ object Usage {
         if (next.values.max() >= 64) next = next.mapValues { it.value / 2 }.filterValues { it > 0 }
         counts = next
         prefs.edit().clear().apply { next.forEach { (k, v) -> putInt(k, v) } }.apply()
+        val now = System.currentTimeMillis()
+        recent = recent + (pkg to now)
+        recentPrefs.edit().putLong(pkg, now).apply()
         rank()
     }
 

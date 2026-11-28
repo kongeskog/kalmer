@@ -140,6 +140,17 @@ val Pencil: DrawScope.() -> Unit = {
     outline { moveTo(4f, 32f); lineTo(6f, 23f); lineTo(25f, 4f); lineTo(32f, 11f); lineTo(13f, 30f); close() }
     line(21f, 8f, 28f, 15f)
 }
+/** Four small squares: the apps page, on a home button. */
+val AppsGrid: DrawScope.() -> Unit = {
+    for (x in listOf(3f, 20f)) for (y in listOf(3f, 20f)) {
+        drawRoundRect(Color.Black, Offset(x, y), Size(13f, 13f), CornerRadius(4f), Stroke(2.5f))
+    }
+}
+/** Two arrows passing each other, for "Reorder". */
+val Swap: DrawScope.() -> Unit = {
+    line(5f, 12f, 31f, 12f); line(31f, 12f, 24f, 5f); line(31f, 12f, 24f, 19f)
+    line(5f, 24f, 31f, 24f); line(5f, 24f, 12f, 17f); line(5f, 24f, 12f, 31f)
+}
 val Eye: DrawScope.() -> Unit = {
     outline { moveTo(2f, 18f); cubicTo(10f, 5f, 26f, 5f, 34f, 18f); cubicTo(26f, 31f, 10f, 31f, 2f, 18f); close() }
     drawCircle(Color.Black, 5f, style = Stroke(3f))

@@ -8,7 +8,7 @@ Screenshot the same screen in both launchers and compare the edges of each eleme
 
 `uiautomator dump` gives exact pixel bounds for every text and tap target, in both Kalm and Kalmer. Match the bounds first, then compare screenshots. All sizes in the code are those pixel values, written as `N.px` (see `Ui.kt`).
 
-Kalm's APK is at `/system/system_ext/priv-app/MuditaLauncher2/MuditaLauncher2.apk`; `aapt2 dump` on a pulled copy gives its strings and resource names. The twelve wallpapers in `app/src/main/assets/wallpapers` are Kalm's own, in the "text left" layout, bundled at the owner's decision so that Kalmer doesn't depend on Kalm being installed. The Lato fonts are bundled under the SIL Open Font License (`LICENSE-Lato.txt`).
+Kalm's APK is at `/system/system_ext/priv-app/MuditaLauncher2/MuditaLauncher2.apk`; `aapt2 dump` on a pulled copy gives its strings and resource names. The wallpapers in `app/src/main/assets/wallpapers` are Kalm's own, twelve designs each cut for its six home styles, bundled at the owner's decision so that Kalmer doesn't depend on Kalm being installed. The Lato fonts are bundled under the SIL Open Font License (`LICENSE-Lato.txt`).
 
 ## Measurements (px on the 480x800 screen)
 
@@ -65,7 +65,17 @@ Different:
 - Pinned apps are listed once, first, with a dotted divider under the last one. Kalm marks them with a pin icon and can list them twice; Kalmer does neither.
 - Icons are redrawn by eye; Kalm's are compiled into its code.
 
-Not built yet: the other five home styles (and their wallpaper variants), font size and type, folders, "most used apps", and the status bar and date/time widget switches.
+Not built yet: font size and type (Appearance in Kalm: six sizes, five typefaces), folders, and the status bar and date/time widget switches (Home Screen Widgets in Kalm).
+
+## Home styles
+
+Customize Layout > Home Style, as in Kalm: six styles in Kalm's order, `Settings.homeStyle` 0 to 5. Text left, centre, right, then buttons with the clock left, centre, right. Measured from Kalm in each style.
+
+- **Clock, date, weather**: against x=48, centred on 240, or ending at x=432, at the same heights in every style. The minimal music player follows the same side with a 40px margin; Kalm's boxed player is full width in all of them.
+- **Text items**: the same column against the left margin, centred, or ending at x=432. A count goes after the name, or before it when the names are on the right; in the centre an equal blank goes before the name so the name stays centred.
+- **Buttons**: four at (24, 554), (245, 554), (24, 672), (245, 672), each 210x107 with a 3px border and 22px corners, white inside. Items fill them in order; an empty item leaves no gap. Kalm draws its own Phone, SMS and Apps glyphs and shows the shortcut app's icon at about 37px. Kalmer's items can be anything, so: the app list, inbox and settings have drawn glyphs; `com.mudita.*` apps show the middle two thirds of their own icon, which is the line drawing without its rounded square, at Kalm's glyph size; other apps show their icon at 37px, as Kalm does. A count sits up and to the right of the icon; Kalm's placement of it was not seen.
+- **Wallpapers**: every design has a cut per style, named `L_Text_Center.svg`, `L_Buttons_Right.svg` and so on. A to F have one `_Buttons.svg` for all three button styles. All 60 files from Kalm are in `app/src/main/assets/wallpapers`. Night versions exist only for J and L in text-left; in other styles the ordinary wallpaper stays.
+- The wallpaper picker and the home style picker share `PickerPage` and the `MiniHome` preview, which shows the candidate in the current style or wallpaper.
 
 ## Offline+ wallpaper
 
@@ -90,3 +100,17 @@ Kalm hides the status bar clock on its home screen through a system-only call. K
 ## Counts
 
 Missed calls and unread SMS come from the call log and SMS database, as in Kalm, when the two permissions are granted. Every other app is counted from its live notifications, ignoring ongoing, group-summary and low-importance ones.
+
+## Tiles layout
+
+Not from Kalm. App List View > Layout swaps the app list for pages of icon tiles (`TilesScreen.kt`), three across, with no header, search or quick access area. Everything else on this page describes the list, which is unchanged.
+
+- **Settings are separate.** The tiles have their own fields in `Settings` (`appsLayout`, `tileNames`, `tileSort`) and read none of the list's (`pinned`, `quickMostUsed`, `searchBar`, `bell`, `scrollBar`), so changing layout never alters the other one. Hidden apps and names are shared. `Store.update` writes every key, so a new field has to be added to `Settings`, `init()` and `update()`.
+- **Few options, on purpose.** Only App Names and Order (A-Z, most recent, most used, custom; tiles only). Icon shape and size, swipe direction, wrapping and hiding the arrows were tried and dropped, as were page arrows and a copy of the first launcher's Previous and Next buttons.
+- **Icons** (`Icons.kt`) are each app's own icon, drawn as supplied at 108px with no frame or recolouring. That size, the column centres (99, 240, 381) and the 28px names 7px below are measured from Mudita's first launcher, `com.mudita.launcher`. Framing every icon in a circle clashed with Mudita's icons, which carry their own rounded square.
+- **Pages, not scrolling.** Rows start at y=60, 21px apart, and stop above a 64px bottom row: four rows with names, five without. The bottom row holds the page dots when there is more than one page. Swipes up and down on the tiles open whatever Interaction Settings > App Tiles Gestures says (targets `tileUp` and `tileDown`), by default nothing and the inbox. A bell in the bottom row was tried and removed at the owner's request, so the inbox has no visible control here. It had arrows too; the owner had them removed, so pages turn by swipe only.
+- **Swipes** are sideways, 80px, as on the home screen. Back from the first page returns home. The home screen's defaults match: swipe left opens the apps page, down the inbox, up Mudita's camera (`com.mudita.camera`), and right nothing. Kalm opens its app list with a swipe up. All of these stay configurable under Interaction Settings > Home Screen Gestures; fixing them was tried and reverted. Saved choices are never overwritten by new defaults.
+- **Reorder**, as Katapult does it (behaviour only, no code): long-press a tile and choose Reorder. That tile is ringed with a dashed line, and tapping another swaps the two. A tap on any tile picks it for the next swap, swipes still turn pages, and Done or Back finishes. Entering it copies the order on screen into `tileOrder` and sets Order to Custom; each swap is saved at once. Apps installed or unhidden later go at the end. Choosing another order keeps the custom one for later.
+- **Counts** use the same `Counts.of` and `Badge` as the list, on a white disc at the icon's top right.
+- Last-opened times for the "most recent" order are kept in `ink_home_recent`.
+- Manage app list is also reachable from App List View, since the tiles have no overflow menu.

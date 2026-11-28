@@ -18,10 +18,12 @@ Kalmer is an independent project. It is not made by, affiliated with or endorsed
 Kalm, the launcher in MuditaOS K 2.0, is a calm, well-drawn home screen. Kalmer keeps its layout, type and settings pages, measured from the real thing to within a pixel or two, and changes the parts that are fixed in Kalm:
 
 - **Every home item is yours to choose.** All four can open any app, the app list, the notification inbox or settings. Kalm fixes two of them to Phone and SMS.
-- **Taps and gestures.** Choose what the time and the date open, and what each swipe and the long press do.
+- **Taps and gestures.** Choose what the time and the date open, and what each swipe and the long press do. To start with, a swipe left opens the apps, down the notification inbox and up the camera.
 - **Notification sounds per app.** Kalm keeps the phone quiet by silencing every app except calls and SMS. Kalmer does the same by default and lets you switch sound back on for the apps you choose.
 - **Notification counts on the home screen.** A home item shows its app's unread count, as the app list does.
 - **A simpler app list.** Pinned or most used apps sit at the top above a fine line, with no icons and no duplicates of pinned apps.
+- **Or icon tiles instead of a list.** Customize Layout > App List View switches the apps page to pages of app icons, three across, with notification counts. Swipe sideways to turn pages. Long-press a tile and choose Reorder to arrange them by hand. The list and the tiles keep separate settings and share hidden apps and names, so switching back loses nothing.
+- **Kalm's six home styles.** Text or buttons, with the clock on the left, in the centre or on the right, each with its own cut of every wallpaper.
 - **A wallpaper for Offline+.** When the Offline+ switch is on, the wallpaper can change to a night version of itself.
 
 <p>
@@ -81,7 +83,7 @@ Kalm silences notifications for as long as it has notification access, even when
 
 ## Night wallpapers for Offline+
 
-Two wallpapers come with a night version: the woodland animals (J), who fall asleep, and the mountain landscape (L), where the sun becomes a moon. The others stay as they are when Offline+ is on.
+Two wallpapers come with a night version: the woodland animals (J), who fall asleep, and the mountain landscape (L), where the sun becomes a moon. The others stay as they are when Offline+ is on, and so do these two in any home style but text on the left.
 
 To add or replace one, make an image with the same name as the wallpaper and copy it to the phone:
 
@@ -89,7 +91,7 @@ To add or replace one, make an image with the same name as the wallpaper and cop
 adb push K_Text_Left.png /sdcard/Android/data/com.kongeskog.kalmer/files/night/
 ```
 
-- Use the original's name: the design letter, then `_Text_Left`, as `.png` or `.svg`. The letters run A to M with no G, in the order of the wallpaper picker after "none".
+- Use the original's name: the design letter, then the home style it is for, such as `_Text_Left` or `_Buttons_Center`, as `.png` or `.svg`. The letters run A to M with no G, in the order of the wallpaper picker after "none".
 - PNG: 480 x 800, pure black on white. SVG: a 356 x 593 canvas, like the originals in `app/src/main/assets/wallpapers`.
 - Start Kalmer once before copying, so that it creates the folder itself.
 

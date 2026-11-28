@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.provider.Settings as SystemSettings
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,7 +33,10 @@ private fun listenerEnabled(context: Context): Boolean {
 }
 
 private val HOME_ITEMS = SLOTS.mapIndexed { i, key -> "Item ${i + 1}" to key }
+private val TILE_ORDERS = listOf("A-Z" to SORT_AZ, "Most recent" to SORT_RECENT, "Most used" to SORT_USED, "Custom" to SORT_CUSTOM)
 private val GESTURES = listOf("Swipe Up" to "up", "Swipe Down" to "down", "Swipe Left" to "left", "Swipe Right" to "right", "Long Press" to "long")
+// Left and right turn the pages there, so only these two are free.
+private val TILE_GESTURES = listOf("Swipe Up" to "tileUp", "Swipe Down" to "tileDown")
 private val TAPS = listOf("Time" to "clock", "Date" to "date")
 
 @Composable
@@ -53,6 +59,7 @@ fun SettingsPage(page: Page, resumeCount: Long, push: (Page) -> Unit, pop: () ->
         }
 
         Page.Layout -> Screen("Customize Layout", pop) {
+            NavRow("Home Style") { push(Page.HomeStyle) }
             NavRow("Home Screen Items") { push(Page.HomeItems) }
             NavRow("Home Screen Widgets") { push(Page.Widgets) }
             NavRow("App List View") { push(Page.AppListView) }
@@ -68,6 +75,23 @@ fun SettingsPage(page: Page, resumeCount: Long, push: (Page) -> Unit, pop: () ->
             }
         }
         Page.AppListView -> Screen("App List View", pop) {
+            SectionHeader("Layout")
+            RadioRow("List", s.appsLayout == LAYOUT_LIST) { Store.update { it.copy(appsLayout = LAYOUT_LIST) } }
+            RadioRow("Tiles", s.appsLayout == LAYOUT_TILES) { Store.update { it.copy(appsLayout = LAYOUT_TILES) } }
+            // Both stay reachable whichever layout is on: each keeps its own settings.
+            NavRow("List Options") { push(Page.ListOptions) }
+            NavRow("Tile Options") { push(Page.TileOptions) }
+            // The tiles have no overflow menu, so hidden apps are managed from here too.
+            NavRow("Manage app list") { push(Page.ManageApps) }
+        }
+        Page.TileOptions -> Screen("Tile Options", pop) {
+            SwitchRow("App Names", checked = s.tileNames) { on -> Store.update { it.copy(tileNames = on) } }
+            NavRow("Order", TILE_ORDERS.firstOrNull { it.second == s.tileSort }?.first) { push(Page.TileOrder) }
+        }
+        Page.TileOrder -> Screen("Order", pop) {
+            for ((label, sort) in TILE_ORDERS) RadioRow(label, s.tileSort == sort) { Store.update { it.copy(tileSort = sort) } }
+        }
+        Page.ListOptions -> Screen("List Options", pop) {
             SwitchRow("Search Bar", checked = s.searchBar) { on -> Store.update { it.copy(searchBar = on) } }
             SwitchRow("Notification shortcut", checked = s.bell) { on -> Store.update { it.copy(bell = on) } }
             SwitchRow("Scroll Bar", checked = s.scrollBar) { on -> Store.update { it.copy(scrollBar = on) } }
@@ -78,9 +102,11 @@ fun SettingsPage(page: Page, resumeCount: Long, push: (Page) -> Unit, pop: () ->
             SwitchRow("Offline+ Wallpaper", "Night version while Offline+ is on", s.offlineWallpaper) { on -> Store.update { it.copy(offlineWallpaper = on) } }
         }
         Page.Wallpaper -> WallpaperPage(pop)
+        Page.HomeStyle -> HomeStylePage(pop)
 
         Page.Interaction -> Screen("Interaction Settings", pop) {
             NavRow("Home Screen Gestures") { push(Page.Gestures) }
+            NavRow("App Tiles Gestures") { push(Page.TileGestures) }
             NavRow("Search Behavior") { push(Page.SearchBehavior) }
             NavRow("Tap Actions") { push(Page.TapActions) }
         }
@@ -89,6 +115,7 @@ fun SettingsPage(page: Page, resumeCount: Long, push: (Page) -> Unit, pop: () ->
             SwitchRow("Auto-open app", "When it’s the only search result", s.autoOpenApp, bold = true) { on -> Store.update { it.copy(autoOpenApp = on) } }
         }
         Page.Gestures -> targets("Home Screen Gestures", GESTURES)
+        Page.TileGestures -> targets("App Tiles Gestures", TILE_GESTURES)
         Page.TapActions -> targets("Tap Actions", TAPS)
         is Page.Pick -> Screen(page.title, pop) {
             val selected = s.target(page.key)
@@ -164,39 +191,67 @@ fun SettingsPage(page: Page, resumeCount: Long, push: (Page) -> Unit, pop: () ->
     }
 }
 
-/** Kalm's wallpaper picker: a framed preview with previous and next buttons and "12 / 13" between them. */
+/**
+ * Kalm's picker page, shared by the wallpapers and the home styles: a framed miniature of the home screen with
+ * previous and next buttons and "12 / 13" between them. "Set" appears once something other than [saved] is showing.
+ */
 @Composable
-private fun WallpaperPage(pop: () -> Unit) {
-    val context = LocalContext.current
-    val saved = Store.settings.wallpaper
-    var index by remember { mutableIntStateOf(WALLPAPERS.indexOf(saved).coerceAtLeast(0)) }
-    val set = {
-        Store.update { it.copy(wallpaper = WALLPAPERS[index]) }
-        Toast.makeText(context, "Wallpaper set", Toast.LENGTH_SHORT).show()
-    }
-    Screen("Wallpaper", pop, action = if (WALLPAPERS[index] != saved) ({ HeaderButton("Set", set) }) else null) {
+private fun PickerPage(title: String, count: Int, saved: Int, pop: () -> Unit, set: (Int) -> Unit, preview: @Composable (Int) -> Unit) {
+    var index by remember { mutableIntStateOf(saved.coerceIn(0, count - 1)) }
+    Screen(title, pop, action = if (index != saved) ({ HeaderButton("Set") { set(index) } }) else null) {
         Box(Modifier.fillMaxSize()) {
             val frame = RoundedCornerShape(12.px)
             // Positions are from the top of the screen in Kalm; this box starts under the 135px header.
-            Box(Modifier.offset(96.px, 44.px).size(288.px, 481.px).border(3.px, Color.Black, frame).clip(frame)) {
-                Wallpaper(WALLPAPERS[index], Modifier.fillMaxSize(), offline = Store.settings.offlineWallpaper && OfflinePlus.on)
-                // A miniature of the home screen over the wallpaper, as in Kalm's preview.
-                BasicText("12:00", Modifier.offset(28.px, 60.px), style = text(38))
-                BasicText("Mon, Jan 1", Modifier.offset(28.px, 108.px), style = text(19))
-                listOf("Phone", "SMS", "Shortcut", "Apps").forEachIndexed { i, label ->
-                    BasicText(label, Modifier.offset(28.px, (311 + 39 * i).px), style = text(17))
-                }
-            }
+            Box(Modifier.offset(96.px, 44.px).size(288.px, 481.px).border(3.px, Color.Black, frame).clip(frame)) { preview(index) }
             val button = RoundedCornerShape(16.px)
             Box(Modifier.offset(43.px, 547.px).size(75.px).border(3.px, Color.Black, button).tap {
-                index = (index + WALLPAPERS.size - 1) % WALLPAPERS.size
+                index = (index + count - 1) % count
             }, contentAlignment = Alignment.Center) { Icon(36, draw = BackArrow) }
             BasicText("${index + 1}", Modifier.offset(180.px, 570.px), style = Body)
             BasicText("/", Modifier.offset(236.px, 570.px), style = Body)
-            BasicText("${WALLPAPERS.size}", Modifier.offset(276.px, 570.px), style = Body)
+            BasicText("$count", Modifier.offset(276.px, 570.px), style = Body)
             Box(Modifier.offset(362.px, 547.px).size(75.px).border(3.px, Color.Black, button).tap {
-                index = (index + 1) % WALLPAPERS.size
+                index = (index + 1) % count
             }, contentAlignment = Alignment.Center) { Icon(36, draw = ForwardArrow) }
         }
     }
+}
+
+/** The home screen at six tenths of its size, as in Kalm's previews: a wallpaper in a home style, with stand-in text. */
+@Composable
+private fun MiniHome(wallpaper: String, style: Int) = Box(Modifier.fillMaxSize()) {
+    Wallpaper(wallpaper, Modifier.fillMaxSize(), offline = Store.settings.offlineWallpaper && OfflinePlus.on, style = style)
+    val side = styleSide(style)
+    val across = listOf(Alignment.TopStart, Alignment.TopCenter, Alignment.TopEnd)[side]
+    @Composable
+    fun line(label: String, y: Int, size: Int) = Box(Modifier.fillMaxWidth().offset(0.px, y.px).padding(horizontal = 28.px)) {
+        BasicText(label, Modifier.align(across), style = text(size))
+    }
+    line("12:00", 60, 38)
+    line("Mon, Jan 1", 108, 19)
+    if (styleButtons(style)) {
+        val shape = RoundedCornerShape(13.px)
+        for (x in listOf(14, 147)) for (y in listOf(332, 403)) {
+            Box(Modifier.offset(x.px, y.px).size(126.px, 64.px).background(Color.White, shape).border(2.px, Color.Black, shape))
+        }
+    } else listOf("Phone", "SMS", "Shortcut", "Apps").forEachIndexed { i, label -> line(label, 311 + 39 * i, 17) }
+}
+
+@Composable
+private fun WallpaperPage(pop: () -> Unit) {
+    val context = LocalContext.current
+    PickerPage("Wallpaper", WALLPAPERS.size, WALLPAPERS.indexOf(Store.settings.wallpaper), pop, { index ->
+        Store.update { it.copy(wallpaper = WALLPAPERS[index]) }
+        Toast.makeText(context, "Wallpaper set", Toast.LENGTH_SHORT).show()
+    }) { index -> MiniHome(WALLPAPERS[index], Store.settings.homeStyle) }
+}
+
+/** Kalm's six home styles, shown on the current wallpaper. */
+@Composable
+private fun HomeStylePage(pop: () -> Unit) {
+    val context = LocalContext.current
+    PickerPage("Home Style", HOME_STYLES, Store.settings.homeStyle, pop, { index ->
+        Store.update { it.copy(homeStyle = index) }
+        Toast.makeText(context, "Home style set", Toast.LENGTH_SHORT).show()
+    }) { index -> MiniHome(Store.settings.wallpaper, index) }
 }

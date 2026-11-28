@@ -29,11 +29,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -71,11 +73,16 @@ sealed interface Page {
     data object HomeItems : Page
     data object Widgets : Page
     data object AppListView : Page
+    data object ListOptions : Page
+    data object TileOptions : Page
+    data object TileOrder : Page
     data object Appearance : Page
     data object Wallpaper : Page
+    data object HomeStyle : Page
     data object Interaction : Page
-    data object Gestures : Page
     data object SearchBehavior : Page
+    data object Gestures : Page
+    data object TileGestures : Page
     data object TapActions : Page
     /** Choose what one home item, tap or gesture opens. */
     data class Pick(val title: String, val key: String) : Page
@@ -115,7 +122,7 @@ class MainActivity : ComponentActivity() {
                 val open: (String) -> Unit = { target ->
                     when (target) {
                         "" -> {}
-                        OPEN_APPS -> push(Page.Apps)
+                        OPEN_APPS -> { tilesPage.intValue = 0; push(Page.Apps) }
                         OPEN_INBOX -> push(Page.Inbox)
                         OPEN_SETTINGS -> push(Page.Settings)
                         else -> Apps.launch(this, target)
@@ -127,7 +134,7 @@ class MainActivity : ComponentActivity() {
                 BackHandler { pop() }
                 when (val page = stack.lastOrNull()) {
                     null -> HomeScreen(resumed, open)
-                    Page.Apps -> AppsScreen(push, pop)
+                    Page.Apps -> if (Store.settings.appsLayout == LAYOUT_TILES) TilesScreen(push, pop, open) else AppsScreen(push, pop)
                     Page.Inbox -> InboxScreen(push, pop)
                     is Page.Rename -> RenameScreen(page.pkg, pop)
                     else -> SettingsPage(page, resumeCount, push, pop) {
@@ -202,11 +209,16 @@ private fun rememberMinute(resumed: Boolean) = produceState(System.currentTimeMi
  * assets/wallpapers_night.
  */
 @Composable
-fun Wallpaper(name: String, modifier: Modifier = Modifier, offline: Boolean = false) {
+fun Wallpaper(name: String, modifier: Modifier = Modifier, offline: Boolean = false, style: Int = Store.settings.homeStyle) {
     val context = LocalContext.current
-    val bitmap = remember(name, offline) {
+    val bitmap = remember(name, offline, style) {
         if (name.isEmpty()) null else {
-            val file = "${name}_Text_Left"
+            // Each wallpaper is cut once per home style. The older ones (A to F) have a single cut for all three button styles.
+            val side = listOf("Left", "Center", "Right")[styleSide(style)]
+            val file = if (!styleButtons(style)) "${name}_Text_$side" else {
+                val cuts = context.assets.list("wallpapers").orEmpty()
+                if ("${name}_Buttons_$side.svg" in cuts) "${name}_Buttons_$side" else "${name}_Buttons"
+            }
             val metrics = context.resources.displayMetrics
             fun svg(open: () -> java.io.InputStream) = try {
                 val svg = open().use { SVG.getFromInputStream(it) }
@@ -284,7 +296,14 @@ private fun HomeScreen(resumed: Boolean, open: (String) -> Unit) {
     ) {
         Wallpaper(s.wallpaper, Modifier.fillMaxSize(), offline = s.offlineWallpaper && OfflinePlus.on)
 
-        Row(Modifier.offset(48.px, 101.px).height(77.px).tap { open(s.target("clock")) }) {
+        // Kalm's styles put the clock block and the items against the left margin, in the middle, or against the right.
+        val side = styleSide(s.homeStyle)
+        val across = listOf(Alignment.TopStart, Alignment.TopCenter, Alignment.TopEnd)[side]
+        @Composable
+        fun line(y: Int, margin: Int = 48, content: @Composable (Modifier) -> Unit) =
+            Box(Modifier.fillMaxWidth().offset(0.px, y.px).padding(horizontal = margin.px)) { content(Modifier.align(across)) }
+
+        line(101) { place -> Row(place.height(77.px).tap { open(s.target("clock")) }) {
             if (alarmSet) {
                 // Kalm's alarm bell fills (48, 127) to (79, 159); the digits start 43px in.
                 Box(Modifier.width(43.px)) { Icon(32, Modifier.offset(0.px, 26.px), AlarmBell) }
@@ -295,46 +314,87 @@ private fun HomeScreen(resumed: Boolean, open: (String) -> Unit) {
                 DateFormat.format("a", Date(now)).toString().uppercase(),
                 Modifier.padding(start = 11.px, top = 13.px), style = text(20),
             )
-        }
-        BasicText(
+        } }
+        line(169) { place -> BasicText(
             DateFormat.format("EEE, MMM d", Date(now)).toString(),
-            Modifier.offset(48.px, 169.px).height(64.px).wrapContentHeight().tap { open(s.target("date")) },
+            place.height(64.px).wrapContentHeight().tap { open(s.target("date")) },
             // Kalm spaces the date slightly wider than Lato's default.
             style = text(32).copy(letterSpacing = 0.24.sp),
-        )
+        ) }
 
         val temperature = Weather.temperature
-        if (s.weather && temperature != null) Row(
-            Modifier.offset(48.px, 212.px).height(64.px).tap { open(WEATHER_APP) },
+        if (s.weather && temperature != null) line(212) { place -> Row(
+            place.height(64.px).tap { open(WEATHER_APP) },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             BasicText("$temperature°", style = text(32))
             Spacer(Modifier.width(6.px))
             Icon(30, draw = weatherIcon(Weather.icon))
-        }
+        } }
 
         if (s.music && Media.active && !Media.dismissed) {
-            if (s.musicStyle == MUSIC_KALM) MusicPlayer(open) else MinimalPlayer(open)
+            if (s.musicStyle == MUSIC_KALM) MusicPlayer(open) else line(260, margin = 40) { place -> MinimalPlayer(place, side, open) }
         }
 
-        Column(Modifier.align(Alignment.BottomStart).padding(start = 48.px, bottom = 36.px)) {
-            val slots = SLOTS.map { s.target(it) }.filter { it.isNotEmpty() }
-            for (target in slots) {
-                val count = if (target == OPEN_INBOX) Inbox.shown().size else Counts.of(target)
-                HomeItem(Apps.homeLabel(target), count) { open(target) }
-            }
+        val slots = SLOTS.map { s.target(it) }.filter { it.isNotEmpty() }
+        fun count(target: String) = if (target == OPEN_INBOX) Inbox.shown().size else Counts.of(target)
+        if (styleButtons(s.homeStyle)) slots.forEachIndexed { i, target ->
+            // Kalm's four buttons, measured: 210x107, in two rows at y=554 and y=672.
+            HomeButton(target, count(target), Modifier.offset((if (i % 2 == 0) 24 else 245).px, (if (i < 2) 554 else 672).px)) { open(target) }
+        }
+        else Column(
+            Modifier.align(listOf(Alignment.BottomStart, Alignment.BottomCenter, Alignment.BottomEnd)[side]).padding(start = 48.px, end = 48.px, bottom = 36.px),
+            horizontalAlignment = listOf(Alignment.Start, Alignment.CenterHorizontally, Alignment.End)[side],
+        ) {
+            for (target in slots) HomeItem(Apps.homeLabel(target), count(target), side) { open(target) }
         }
     }
 }
 
+/** A home item as text. Its count sits after the name, or before it when the names are against the right margin. */
 @Composable
-private fun HomeItem(label: String, count: Int, onClick: () -> Unit) {
+private fun HomeItem(label: String, count: Int, side: Int, onClick: () -> Unit) {
+    val style = Store.settings.badges
+    val badge = count > 0 && style != 0
     Row(Modifier.height(65.px).tap(onClick), verticalAlignment = Alignment.CenterVertically) {
+        if (badge && side == 2) {
+            Badge(count)
+            Spacer(Modifier.width(12.px))
+        }
+        // In the centre, as much blank space as the count takes goes before the name, so the name itself stays centred.
+        if (badge && side == 1) Spacer(Modifier.width((12 + if (style == 1) 15 else 37).px))
         BasicText(label, style = Item, maxLines = 1)
-        if (count > 0 && Store.settings.badges != 0) {
+        if (badge && side != 2) {
             Spacer(Modifier.width(12.px))
             Badge(count)
         }
+    }
+}
+
+/**
+ * A home item as one of Kalm's buttons. Kalm draws Phone, SMS and Apps itself and shows the shortcut app's icon;
+ * here every item can be anything, so Mudita's apps show the drawing from their own icon, without its square,
+ * and other apps their icon as it is.
+ */
+@Composable
+private fun HomeButton(target: String, count: Int, modifier: Modifier, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(22.px)
+    Box(
+        modifier.size(210.px, 107.px).background(Color.White, shape).border(3.px, Color.Black, shape).tap(onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        when (target) {
+            OPEN_APPS -> Icon(36, draw = AppsGrid)
+            OPEN_INBOX -> Icon(36, draw = Bell)
+            OPEN_SETTINGS -> Icon(36, draw = Gear)
+            else -> {
+                val mudita = target.startsWith("com.mudita.")
+                val size = if (mudita) 56 else 37
+                val sizePx = with(androidx.compose.ui.platform.LocalDensity.current) { size.px.roundToPx() }
+                Box(Modifier.size(size.px)) { AppIcon(target, sizePx, 28, glyph = mudita) }
+            }
+        }
+        if (count > 0 && Store.settings.badges != 0) Box(Modifier.offset(38.px, (-24).px)) { Badge(count) }
     }
 }
 
@@ -345,8 +405,11 @@ private fun HomeItem(label: String, count: Int, onClick: () -> Unit) {
  * below the weather: matching the 14px between the date and the weather looks cramped, as the icon is taller.
  */
 @Composable
-private fun MinimalPlayer(open: (String) -> Unit) {
-    Row(Modifier.offset(40.px, 260.px).height(64.px), verticalAlignment = Alignment.CenterVertically) {
+private fun MinimalPlayer(place: Modifier, side: Int, open: (String) -> Unit) {
+    // On the right the ✕ is what meets the margin. Its ink stops 14px short of the row's end, so the row goes
+    // 4px further right to bring it to x=430, where the "AM" and the date end. In the centre the row is as wide
+    // as its title, so the whole group is centred, and 2px right because the ✕ has more blank beside it than the toggle.
+    Row(place.offset(listOf(0, 2, 4)[side].px, 0.px).height(64.px), verticalAlignment = Alignment.CenterVertically) {
         // The 52x64px cell is the tap target.
         // Play and Pause are drawn on a 48px box, so they're scaled down to fit.
         val toggle = if (Media.playing) Pause else Play
@@ -361,7 +424,8 @@ private fun MinimalPlayer(open: (String) -> Unit) {
         Spacer(Modifier.width(8.px))
         BasicText(
             Media.title.ifBlank { Media.artist }.ifBlank { "Music" },
-            Modifier.width(148.px).height(64.px).wrapContentHeight().tap { Media.controller?.packageName?.let(open) },
+            (if (side == 1) Modifier.widthIn(max = 148.px) else Modifier.width(148.px))
+                .height(64.px).wrapContentHeight().tap { Media.controller?.packageName?.let(open) },
             style = text(24), maxLines = 1, overflow = TextOverflow.Ellipsis,
         )
         // Like the ✕ on Kalm's bar: pauses and hides the player until music next starts playing. The icon ends at x=288.
