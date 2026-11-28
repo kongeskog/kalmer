@@ -121,3 +121,7 @@ Needs JDK 17 and the Android SDK (platform 35, build-tools 34). Without a `keyst
 - Built with Mudita's [Mindful Design](https://github.com/mudita/MMD) library (Apache-2.0) and [AndroidSVG](https://bigbadaboom.github.io/androidsvg/) (Apache-2.0).
 - The Lato typeface is by Łukasz Dziedzic, under the SIL Open Font License; see `LICENSE-Lato.txt`.
 - Kalm, Mudita and Mudita Kompakt are Mudita's. The wallpapers in `app/src/main/assets/wallpapers` are Mudita's artwork from the Kalm launcher, included so that Kalmer works on its own; the two night versions are adapted from them. They are not covered by any licence of this project and remain Mudita's. If you are from Mudita and would like them removed, open an issue.
+
+## Licence
+
+Kalmer's own code and drawings are under the [Apache License 2.0](LICENSE). That does not cover the two things listed above that belong to others: the wallpapers, which remain Mudita's, and the Lato fonts, which are under the SIL Open Font License.
